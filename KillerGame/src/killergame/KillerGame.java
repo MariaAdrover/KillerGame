@@ -11,14 +11,14 @@ public class KillerGame extends JFrame {
     private final KillerServer server;
     private KillerClient clienteDerecha;
     private KillerClient clienteIzq;
-    private final KillerRule rules;
+    //private KillerRule rules;
     private final Viewer viewer;
+    private Autonomous bola;
+    private ArrayList<VisibleObject> objects;
 
     public Viewer getViewer() {
         return viewer;
     }
-    private Autonomous bola;
-    private ArrayList<VisibleObject> objects;
 
     public ArrayList<VisibleObject> getObjects() {
         return objects;
@@ -41,8 +41,8 @@ public class KillerGame extends JFrame {
         // Crear server
         this.server = new KillerServer(this, 8888);
 
-        // Crear cliente
-        this.rules = new KillerRule();
+        // Crear DFHDGFH
+        //this.rules = new KillerRule();
 
         // Crear bola
         this.objects.add(new Autonomous(this, 1, 0, 400, 100, 140, 1, 2));
@@ -85,14 +85,32 @@ public class KillerGame extends JFrame {
     }
 
     public void test(VisibleObject obj) {
-        // poner test para todos los objetos
-        // para los controlled si se salen, sendControlledOutspace(obj, -1 si sale x la izq, o 1 si sale por la derecha)
+        int crashed = 0; // no hay colision
+        int action = 0; // no hacer nada
+
+        if (obj instanceof Autonomous) {
+            crashed = testColision((Autonomous) obj);
+        }
+
+        if (crashed != 0) {
+            action = KillerRule.requestRule(obj, crashed);
+        }
+        
+        if (action != 0) {
+            // Hacer otro metodo
+            switch (action) {
+                case -1:
+                    sendAutonomousOutspace((Autonomous)obj, this.clienteIzq);
+                    break;
+                case 1:
+                    sendAutonomousOutspace((Autonomous)obj, this.clienteDerecha);
+                    break;
+            }
+        }
+
+        /*
         if (obj instanceof Autonomous) {
             Autonomous a = ((Autonomous) obj);
-            // vaya kk cambiar
-            // mirar colision, rules etc.
-            // Todo eesto deberia hacerse desde las rules
-            // Han de tener acceso a los clientes
             if (((a.getX() + a.getWidth() > 1920) && a.getvX() > 0)) {
                 sendAutonomousOutspace(a, this.clienteDerecha);
                 this.rules.test(obj, 3);
@@ -100,19 +118,24 @@ public class KillerGame extends JFrame {
                 sendAutonomousOutspace(a, this.clienteIzq);
                 this.rules.test(obj, 3);
             }
-        }
+        }*/
     }
 
-    private void sendControlledOutspace(Controlled c, int server) {
-        //Añadir handler al objeto
-        String requestIP;
-        if (server == -1) {
-            requestIP = "ip del servidor de la izquierda";
-        } else { // enviar 1
-            requestIP = "ip del servidor de la derecha";
+    private int testColision(Autonomous a) {
+        // devuelve por que lado ha chocado
+        // cambiar por Object o
+        // para que devuelva con que OBJETO ha chocado, i NO con que lado
+        // 0 --> no ha chocado
+        // -1 --> ha chocado con lado izquierdo
+        // -1 --> ha chocado con lado derecho
+        int crashed = 0;
+        if (((a.getX() + a.getWidth() > 1920) && a.getvX() > 0)) {
+            crashed = 1;
+        } else if (a.getX() < 0) {
+            crashed = -1;
         }
-        //c.getHandler().sendControlledOut(
-        this.objects.remove(c);
+
+        return crashed;
     }
 
     private void sendAutonomousOutspace(Autonomous a, KillerClient client) {
@@ -128,21 +151,33 @@ public class KillerGame extends JFrame {
         this.objects.remove(a);
     }
 
+    private void sendControlledOutspace(Controlled c, int server) {
+        //Añadir handler al objeto
+        String requestIP;
+        if (server == -1) {
+            requestIP = "ip del servidor de la izquierda";
+        } else { // enviar 1
+            requestIP = "ip del servidor de la derecha";
+        }
+        //c.getHandler().sendControlledOut(
+        this.objects.remove(c);
+    }
+
     private void createClients() {
 
         // Crear cliente
-        this.clienteDerecha = new KillerClient("192.168.1.67", 8888);
-        this.clienteIzq = new KillerClient("192.168.1.67", 8888);
+        this.clienteDerecha = new KillerClient("192.168.1.46", 8888);
+        this.clienteIzq = new KillerClient("192.168.1.46", 8888);
 
     }
 
     public void startGame() {
         (new Thread(this.server)).start();
+        createClients();
         (new Thread(this.viewer)).start();
         for (VisibleObject o : this.objects) {
             (new Thread((Alive) o)).start();
         }
-        createClients();
         JFXPanel jfxPanel = new JFXPanel();
         KillerRadio.playAudio("8-bit-Arcade4.wav");
     }
